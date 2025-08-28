@@ -1,32 +1,29 @@
-from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import RegisterSerializer
+from .serializers import LoginSerializer, RegisterSerializer
+
+# FIXME обсудить generics API view
 
 
 # Регистрация
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
+    def get(self, request):
+        serializer = RegisterSerializer()
+        return Response(serializer.data)
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            refresh = RefreshToken.for_user(user)
-            return Response(
-                {
-                    "message": "User created successfully",
-                    "access_token": str(refresh.access_token),
-                    "refresh_token": str(refresh),
-                },
-                status=status.HTTP_201_CREATED,
-            )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(
-            {"error": serializer.errors.get("username", ["Unknown error"])}, status=400
+            {"message": "User created successfully"},
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -34,19 +31,22 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    def get(self, request):
+        serializer = LoginSerializer()
+        return Response(serializer.data)
+
     def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-        user = authenticate(username=username, password=password)
-        if user:
-            refresh = RefreshToken.for_user(user)
-            return Response(
-                {
-                    "access_token": str(refresh.access_token),
-                    "refresh_token": str(refresh),
-                }
-            )
-        return Response({"error": "Invalid username or password"}, status=401)
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                "access_token": str(refresh.access_token),
+                "refresh_token": str(refresh),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 # Logout (blacklist refresh токена)
