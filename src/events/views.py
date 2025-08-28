@@ -1,11 +1,13 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Event
 from .serializers import EventSerializer
 
 
 class EventListAPIView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Event.objects.filter(status="open").select_related(
         "venue"
     )  # select_related для предотвращения N+1
